@@ -1,92 +1,128 @@
 import SwiftUI
 
-struct ContentView: View {
-    @StateObject var game = WordleGame()
+// MARK: - Main View
 
+struct ContentView: View {
+    @StateObject private var game = WordleGame()
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             Spacer(minLength: 20)
             
-            // Word grid
-            ForEach(0..<game.maxGuesses, id: \.self) { row in
-                HStack {
-                    rowView(row)
-                }
-            }
-            .padding(.bottom, 2)
+            // Game grid
+            gameGrid
+                .padding(.bottom, 20)
             
             Spacer()
-
+            
             // Keyboard
             keyboard
-            
         }
         .padding()
     }
-
-    // Render a row
-    func rowView(_ row: Int) -> some View {
-        // This row is already submitted
-        if row < game.guesses.count {
-            let guessLetters = game.guesses[row]
-            return HStack {
-                ForEach(0..<game.wordLength, id: \.self) { i in
-                    tileView(letter: guessLetters[i])
-                }
-            }
-        }
-
-        // This row is the active typing row
-        if row == game.guesses.count {
-            let letters = Array(game.currentGuess.map { Letter(character: String($0), status: .empty) })
-            return HStack {
-                ForEach(0..<game.wordLength, id: \.self) { i in
-                    tileView(letter: i < letters.count ? letters[i] : Letter(character: "", status: .empty))
-                }
-            }
-        }
-
-        // All future rows are empty
-        return HStack {
-            ForEach(0..<game.wordLength, id: \.self) { _ in
-                tileView(letter: Letter(character: "", status: .empty))
-            }
-        }
-    }
-
     
-    // Tile view
-    func tileView(letter: Letter) -> some View {
-        // Determine background and border
-        let bgColor: Color = {
-            switch letter.status {
-            case .correct: return .green
-            case .present: return .yellow
-            case .absent: return .black.opacity(0.6)
-            case .empty: return .white
+    // MARK: - Game Grid
+    
+    private var gameGrid: some View {
+        VStack(spacing: 4) {
+            ForEach(0..<game.maxGuesses, id: \.self) { row in
+                rowView(row)
             }
-        }()
-        
-        let borderColor: Color = {
-            switch letter.status {
-            case .empty: return Color.gray
-            default: return Color.clear
-            }
-        }()
-        
-        return Text(letter.character)
-            .font(.title)
-            .frame(width: 60, height: 60)
-            .background(bgColor)
-            .foregroundColor(letter.status == .empty ? .black : .white)
-            .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .stroke(letter.status == .empty ? Color.gray : Color.clear, lineWidth: 2)
-            )
-            .cornerRadius(5)
+        }
     }
-
+    
+    // MARK: - Row Construction
+    
+    /// Renders a row of tiles based on the current game state
+    /// - Parameter row: The row index to render
+    /// - Returns: A view representing the row
+    func rowView(_ row: Int) -> some View {
+        HStack(spacing: 4) {
+            ForEach(0..<game.wordLength, id: \.self) { column in
+                tileView(letter: letterFor(row: row, column: column))
+            }
+        }
+    }
+    
+    /// Gets the letter for a specific position in the grid
+    /// - Parameters:
+    ///   - row: The row index
+    ///   - column: The column index
+    /// - Returns: The Letter object for this position
+    private func letterFor(row: Int, column: Int) -> Letter {
+        // Row is already submitted
+        if row < game.guesses.count {
+            return game.guesses[row][column]
+        }
+        
+        // Row is the current active row
+        if row == game.guesses.count {
+            let currentLetters = Array(game.currentGuess)
+            if column < currentLetters.count {
+                return Letter(character: String(currentLetters[column]), status: .empty)
+            }
+        }
+        
+        // Empty cell
+        return Letter(character: "", status: .empty)
+    }
+    
+    // MARK: - Tile View
+    
+    /// Creates a tile view with flip animation
+    /// - Parameter letter: The letter to display
+    /// - Returns: An animated tile view
+    func tileView(letter: Letter) -> some View {
+        ZStack {
+            // Front face - white tile with border
+            tileFace(letter: letter, isBack: false)
+                .opacity(letter.rotation < 90 ? 1 : 0)
+            
+            // Back face - colored tile
+            tileFace(letter: letter, isBack: true)
+                .opacity(letter.rotation >= 90 ? 1 : 0)
+                .rotation3DEffect(.degrees(180), axis: (x: 1, y: 0, z: 0))
+        }
+        .rotation3DEffect(
+            .degrees(letter.rotation),
+            axis: (x: 1, y: 0, z: 0),
+            perspective: 0.5
+        )
+        .animation(.easeInOut(duration: 0.25), value: letter.rotation)
+    }
+    
+    /// Creates a single face of the tile
+    /// - Parameters:
+    ///   - letter: The letter to display
+    ///   - isBack: Whether this is the back face
+    /// - Returns: A tile face view
+    private func tileFace(letter: Letter, isBack: Bool) -> some View {
+        Text(letter.character.uppercased())
+            .font(.title)
+            .fontWeight(.bold)
+            .frame(width: 60, height: 60)
+            .background(isBack ? colorForStatus(letter.status) : .white)
+            .foregroundColor(isBack ? .white : .black)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isBack ? Color.clear : Color.gray, lineWidth: 2)
+            )
+    }
+    
+    /// Returns the appropriate color for a letter status
+    /// - Parameter status: The letter status
+    /// - Returns: The corresponding color
+    private func colorForStatus(_ status: LetterStatus) -> Color {
+        switch status {
+        case .correct: return .green
+        case .present: return .yellow
+        case .absent: return .gray
+        case .empty: return .white
+        }
+    }
 }
+
 extension ContentView {
     func keyColor(_ key: String) -> Color {
         switch game.keyStates[key] {
