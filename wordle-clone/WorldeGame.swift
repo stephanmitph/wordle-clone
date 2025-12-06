@@ -39,7 +39,8 @@ struct Letter {
 class WordleGame: ObservableObject {
     // MARK: - Published Properties
     
-    @Published var solution = "SWORD"
+    @Published var solution = WordList.randomWord()
+    //@Published var solution = "SWORD"
     @Published var guesses: [[Letter]] = []
     @Published var currentGuess: String = ""
     @Published var keyStates: [String: KeyStatus] = [:]
@@ -48,6 +49,13 @@ class WordleGame: ObservableObject {
     
     let maxGuesses = 6
     let wordLength = 5
+    
+    func newGame() {
+        solution = WordList.randomWord()
+        guesses = []
+        currentGuess = ""
+        keyStates = [:]
+    }
     
     // MARK: - Input Methods
     

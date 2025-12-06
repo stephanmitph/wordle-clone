@@ -2,28 +2,64 @@ import SwiftUI
 
 // MARK: - Main View
 
-struct MainView: View {
+struct WorldeView: View {
     @StateObject private var game = WordleGame()
     @StateObject private var alertManager = AlertManager()
     
     @State private var rowShakeOffset: CGFloat = 0
     
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 15)
-            
-            // Game grid
-            gameGrid
-                .padding(.bottom, 20)
-            
-            Spacer()
-            
-            // Keyboard
-            keyboard
+    private var isGameFinished: Bool {
+        // Won - found the word
+        if let lastGuess = game.guesses.last {
+            if lastGuess.allSatisfy({ $0.status == .correct }) {
+                return true
+            }
         }
-        .padding()
-        .alertOverlay(alertManager)
+        // Lost - ran out of guesses
+        return game.guesses.count >= game.maxGuesses
+    }
+
+    var body: some View {
+        ZStack {
+            VStack(spacing: 0) {
+                Spacer(minLength: 15)
+                
+                // Game grid
+                gameGrid
+                    .padding(.bottom, 20)
+                
+                Spacer()
+                
+                // Keyboard
+                keyboard
+                    .disabled(isGameFinished)
+                    .opacity(isGameFinished ? 0.5 : 1.0)
+            }
+            .padding()
+            .alertOverlay(alertManager)
+            
+            // Floating restart button
+            if isGameFinished {
+                VStack {
+                    Button(action: {
+                        game.newGame()
+                    }) {
+                        Text("New Word")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                    .padding(.top, 20)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    
+                    Spacer()
+                }
+            }
+        }
     }
     
     // MARK: - Helper functions
@@ -154,7 +190,7 @@ struct MainView: View {
 
 // MARK: - Keyboard View
 
-extension MainView {
+extension WorldeView {
     func keyColor(_ key: String) -> Color {
         switch game.keyStates[key] {
         case .correct:
@@ -178,12 +214,19 @@ extension MainView {
     }
     
     private func attemptSubmit() {
-        if game.currentGuess.count == game.wordLength {
-            game.submitGuess()
-        } else {
+        if game.currentGuess.count != game.wordLength {
             alertManager.showAlertMessage("Not enough letters")
             shakeCurrentRow()
+            return
         }
+        
+        if !WordList.isValid(game.currentGuess) {
+            alertManager.showAlertMessage("Not in word list")
+            shakeCurrentRow()
+            return
+        }
+        
+        game.submitGuess()
     }
 
     func keyRow(_ keys: [String], includeSpecial: Bool = false) -> some View {
@@ -245,5 +288,5 @@ extension View {
 
 
 #Preview {
-    MainView()
+    WorldeView()
 }
