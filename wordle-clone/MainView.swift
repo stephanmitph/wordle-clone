@@ -2,12 +2,16 @@ import SwiftUI
 
 // MARK: - Main View
 
-struct ContentView: View {
+struct MainView: View {
     @StateObject private var game = WordleGame()
+    @StateObject private var alertManager = AlertManager()
+    
+    @State private var rowShakeOffset: CGFloat = 0
+    
     
     var body: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 20)
+            Spacer(minLength: 15)
             
             // Game grid
             gameGrid
@@ -19,6 +23,30 @@ struct ContentView: View {
             keyboard
         }
         .padding()
+        .alertOverlay(alertManager)
+    }
+    
+    // MARK: - Helper functions
+    
+    
+    
+    func shakeCurrentRow() {
+        let duration = 0.08
+        let offset: CGFloat = 10
+        let animation = Animation.linear(duration: duration)
+        withAnimation(animation) { rowShakeOffset = -offset }
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration * 1) {
+            withAnimation(animation) { rowShakeOffset = offset }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration * 2) {
+            withAnimation(animation) { rowShakeOffset = -offset }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration * 3) {
+            withAnimation(animation) { rowShakeOffset = offset }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration * 4) {
+            withAnimation(animation) { rowShakeOffset = 0 }
+        }
     }
     
     // MARK: - Game Grid
@@ -42,6 +70,7 @@ struct ContentView: View {
                 tileView(letter: letterFor(row: row, column: column))
             }
         }
+        .offset(x: row == game.guesses.count ? rowShakeOffset : 0)
     }
     
     /// Gets the letter for a specific position in the grid
@@ -123,7 +152,9 @@ struct ContentView: View {
     }
 }
 
-extension ContentView {
+// MARK: - Keyboard View
+
+extension MainView {
     func keyColor(_ key: String) -> Color {
         switch game.keyStates[key] {
         case .correct:
@@ -145,13 +176,22 @@ extension ContentView {
         }
         .padding(.horizontal)
     }
+    
+    private func attemptSubmit() {
+        if game.currentGuess.count == game.wordLength {
+            game.submitGuess()
+        } else {
+            alertManager.showAlertMessage("Not enough letters")
+            shakeCurrentRow()
+        }
+    }
 
     func keyRow(_ keys: [String], includeSpecial: Bool = false) -> some View {
         HStack(spacing: 6) {
 
             // Special key on right (Enter)
             if includeSpecial {
-                Button(action: { game.submitGuess() }) {
+                Button(action: { attemptSubmit() }) {
                     Text("Enter")
                         .keyboardSpecialKeyStyle()
                 }
@@ -205,5 +245,5 @@ extension View {
 
 
 #Preview {
-    ContentView()
+    MainView()
 }

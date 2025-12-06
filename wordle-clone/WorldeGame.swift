@@ -18,10 +18,10 @@ enum LetterStatus {
 
 /// Represents the status of a keyboard key
 enum KeyStatus {
-    case unused     // Key hasn't been used yet
     case correct    // Key is in correct position in at least one guess
     case present    // Key exists in word but wrong position
     case absent     // Key is not in the word
+    case unused     // Key hasn't been used yet
 }
 
 // MARK: - Models
