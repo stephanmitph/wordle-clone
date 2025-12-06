@@ -165,13 +165,13 @@ struct WorldeView: View {
         Text(letter.character.uppercased())
             .font(.title)
             .fontWeight(.bold)
-            .frame(width: 60, height: 60)
+            .frame(width: 65, height: 65)
             .background(isBack ? colorForStatus(letter.status) : .white)
             .foregroundColor(isBack ? .white : .black)
-            .cornerRadius(8)
+            .cornerRadius(5)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isBack ? Color.clear : Color.gray, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(isBack ? Color.clear : Color.gray, lineWidth: 1)
             )
     }
     
@@ -205,12 +205,37 @@ extension WorldeView {
     }
     
     var keyboard: some View {
-        VStack(spacing: 8) {
-            keyRow(["Q","W","E","R","T","Y","U","I","O","P"])
-            keyRow(["A","S","D","F","G","H","J","K","L"])
-            keyRow(["Z","X","C","V","B","N","M"], includeSpecial: true)
+        GeometryReader { geometry in
+            let totalWidth = geometry.size.width
+            let keySpacing: CGFloat = 6
+            let specialKeyWidth: CGFloat = 55
+            
+            // All letter keys should be the same size
+            // Top row has 10 keys
+            let topRowKeyCount: CGFloat = 10
+            let topRowKeyWidth = (totalWidth - (keySpacing * (topRowKeyCount - 1))) / topRowKeyCount
+            
+            // Use the same key size for all rows for consistency
+            let keyWidth = topRowKeyWidth
+            
+            VStack(spacing: 8) {
+                // Top row - 10 keys
+                keyRow(["Q","W","E","R","T","Y","U","I","O","P"], keyWidth: keyWidth, spacing: keySpacing)
+                
+                // Middle row - 9 keys, centered
+                HStack(spacing: 0) {
+                    Spacer()
+                        .frame(width: keyWidth / 2)
+                    keyRow(["A","S","D","F","G","H","J","K","L"], keyWidth: keyWidth, spacing: keySpacing)
+                    Spacer()
+                        .frame(width: keyWidth / 2)
+                }
+                
+                // Bottom row - 7 keys with special keys on both sides
+                keyRow(["Z","X","C","V","B","N","M"], includeSpecial: true, keyWidth: keyWidth, specialKeyWidth: specialKeyWidth, spacing: keySpacing)
+            }
         }
-        .padding(.horizontal)
+        .frame(height: 200)
     }
     
     private func attemptSubmit() {
@@ -229,62 +254,54 @@ extension WorldeView {
         game.submitGuess()
     }
 
-    func keyRow(_ keys: [String], includeSpecial: Bool = false) -> some View {
-        HStack(spacing: 6) {
-
-            // Special key on right (Enter)
+    func keyRow(_ keys: [String], includeSpecial: Bool = false, keyWidth: CGFloat, specialKeyWidth: CGFloat = 65, spacing: CGFloat) -> some View {
+        HStack(spacing: spacing) {
+            // Special key on left (Enter)
             if includeSpecial {
-                Button(action: { attemptSubmit() }) {
+                Button(action: { if !isGameFinished { attemptSubmit() } }) {
                     Text("Enter")
-                        .keyboardSpecialKeyStyle()
+                        .keyboardSpecialKeyStyle(width: specialKeyWidth)
                 }
             }
 
             // Main letter keys
             ForEach(keys, id: \.self) { key in
-                Button(action: { game.enterLetter(key) }) {
+                Button(action: { if !isGameFinished { game.enterLetter(key) } }) {
                     Text(key)
-                        .keyboardKeyStyle(color: keyColor(key))
+                        .keyboardKeyStyle(color: keyColor(key), width: keyWidth)
                 }
             }
             
-            // Special key on left (⌫)
+            // Special key on right (⌫)
             if includeSpecial {
-                Button(action: { game.deleteLetter() }) {
+                Button(action: { if !isGameFinished { game.deleteLetter() } }) {
                     Text("⌫")
-                        .keyboardSpecialKeyStyle()
+                        .keyboardSpecialKeyStyle(width: specialKeyWidth)
                 }
             }
-
         }
     }
 }
 
 extension View {
-
-    func keyboardKeyStyle(color: Color) -> some View {
+    func keyboardKeyStyle(color: Color, width: CGFloat) -> some View {
         self
-            .font(.title3)
-            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 46)
-            .padding(.horizontal, 2)
-            .minimumScaleFactor(0.5)
+            .font(.system(size: 20, weight: .bold))
+            .frame(width: width, height: 58)
             .background(color)
             .foregroundColor(.white)
-            .cornerRadius(6)
+            .cornerRadius(4)
     }
 
-    func keyboardSpecialKeyStyle() -> some View {
+    func keyboardSpecialKeyStyle(width: CGFloat) -> some View {
         self
-            .font(.headline)
-            .frame(minWidth: 50, maxWidth: 65, minHeight: 46)
-            .minimumScaleFactor(0.5)
+            .font(.system(size: 13, weight: .bold))
+            .frame(width: width, height: 58)
             .background(Color.gray.opacity(0.8))
             .foregroundColor(.white)
-            .cornerRadius(6)
+            .cornerRadius(4)
     }
 }
-
-
 
 
 #Preview {
